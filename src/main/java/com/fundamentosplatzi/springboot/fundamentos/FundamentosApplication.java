@@ -7,6 +7,7 @@ import com.fundamentosplatzi.springboot.fundamentos.component.ComponentDependenc
 import com.fundamentosplatzi.springboot.fundamentos.entity.User;
 import com.fundamentosplatzi.springboot.fundamentos.pojo.UserPojo;
 import com.fundamentosplatzi.springboot.fundamentos.repository.UserRepository;
+import com.fundamentosplatzi.springboot.fundamentos.service.UserService;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -31,19 +32,18 @@ public class FundamentosApplication implements CommandLineRunner {
 	//usando la anotación @Qualifier llamamos a la dependencia que queremos inyectar
 
 	private MyBeanWithDependency myBeanWithDependency;
-
 	private MyBeanWithProperties myBeanWithProperties;
-
 	private UserRepository userRepository;
+	private UserService userService;
 
-
-	public FundamentosApplication(@Qualifier("componentTwoImplement") ComponentDependency componentDependency, MyBean myBean, MyBeanWithDependency myBeanWithDependency, MyBeanWithProperties myBeanWithProperties, UserPojo userPojo, UserRepository userRepository) {
+	public FundamentosApplication(@Qualifier("componentTwoImplement") ComponentDependency componentDependency, MyBean myBean, MyBeanWithDependency myBeanWithDependency, MyBeanWithProperties myBeanWithProperties, UserPojo userPojo, UserRepository userRepository, UserService userService) {
 		this.componentDependency = componentDependency;
 		this.myBean = myBean; //Con esto inyectamos nuestra propia dependencia
 		this.myBeanWithDependency = myBeanWithDependency;
 		this.myBeanWithProperties = myBeanWithProperties;
 		this.userPojo = userPojo;
 		this.userRepository = userRepository;
+		this.userService = userService;
 	}
 
 
@@ -57,6 +57,25 @@ public class FundamentosApplication implements CommandLineRunner {
 		//ejemplosAnteriores();
 		saveUserInDataBse();
 		getInformationJpqlFromUser();
+		saveWithErrorTranasactional();
+	}
+
+	private void saveWithErrorTranasactional(){
+		User user1 = new User("TestTransactional1", "TestTransactional1@mail.com",LocalDate.now());
+		User user2 = new User("TestTransactional2", "TestTransactional2@mail.com",LocalDate.now());
+		User user3 = new User("TestTransactional3", "TestTransactional1@mail.com",LocalDate.now());
+		User user4 = new User("TestTransactional4", "TestTransactional4@mail.com",LocalDate.now());
+
+		List<User> users = Arrays.asList(user1,user2, user3, user4);
+
+		try {
+			userService.saveTransactional(users);
+		}catch (Exception e) {
+			LOGGER.error("Ésta es una excepción dentro del método transaccional..." + e);
+		}
+
+		userService.getAllUsers().stream()
+				.forEach(user -> LOGGER.info("Este es el usuario dentro del método transaccional " + user));
 	}
 
 	private void getInformationJpqlFromUser(){
@@ -98,6 +117,11 @@ public class FundamentosApplication implements CommandLineRunner {
 		userRepository.findByNameContainingOrderByIdDesc("user")
 				.stream()
 				.forEach(user -> LOGGER.info("Usuario encontrado con contained y ordenado: " + user));
+
+		userRepository.getAllByBirthDateAndEmail(LocalDate.of(2021,04,1), "ivan@domain.com")
+				.stream()
+				.forEach(userDto -> LOGGER.info("Usuario encontrado con getAllByBirthDateAndEmail: " + userDto));
+
 	}
 
 	private void saveUserInDataBse() {
